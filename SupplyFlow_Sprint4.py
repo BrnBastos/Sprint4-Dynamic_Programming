@@ -1,30 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-SUMÁRIO — Onde cada técnica foi usada
-
-• Fila (FIFO):
-  - SistemaEstoque.fila_consumo (collections.deque)
-  - Registro: SistemaEstoque._registrar_consumo_evento
-  - Visualização: SistemaEstoque.exibir_historico (bloco "Fila")
-
-• Pilha (LIFO):
-  - SistemaEstoque.pilha_consumo (list)
-  - Registro: SistemaEstoque._registrar_consumo_evento
-  - Visualização: SistemaEstoque.exibir_historico (bloco "Pilha")
-
-• Buscas:
-  - Sequencial: SistemaEstoque.busca_sequencial (usada em buscar_insumo)
-  - Binária:    SistemaEstoque.busca_binaria    (usada em buscar_insumo)
-
-• Ordenação:
-  - Merge Sort por nome: SistemaEstoque.merge_sort/_merge (manter lista de nomes)
-  - Quick Sort por quantidade: SistemaEstoque.quick_sort (exibir estoque total)
-
-• Programação Dinâmica — Reposição Ótima:
-  - Funções: SistemaEstoque._hold_cost, dp_reposicao_rec_memo, dp_reposicao_bottom_up
-  - Previsão simples: SistemaEstoque.prever_demanda (usa histórico para média) 
-  - Geração de plano: SistemaEstoque.plano_dp_para_insumo (usa DP e formata)
-  - Integração: resultado aparece em Checagem Periódica quando item está crítico
+SupplyFlow — Sprint 4
+Comparação em tempo real: imprime **método iterativo (bottom-up)** e **método recursivo (memoização)**
+na Checagem Periódica, lado a lado, com indicação se os planos/custos são consistentes.
 """
 
 import time
@@ -33,7 +11,9 @@ from tkinter import simpledialog, messagebox
 from collections import deque
 from functools import lru_cache
 
-# logo rápido (3s)
+# -----------------------------
+# Logo rápido (3s)
+# -----------------------------
 
 def logo_SupplyFlow():
     logo = r"""
@@ -57,7 +37,9 @@ def logo_SupplyFlow():
     root.after(3000, root.destroy)
     root.mainloop()
 
-# modelos simples
+# -----------------------------
+# Modelos simples
+# -----------------------------
 
 class insumo:
     def __init__(self, nome, quantidade):
@@ -78,16 +60,9 @@ class Prateleira:
         else:
             self.insumos[nome] = insumo(nome, quantidade)
 
-    def exibir_estoque(self):
-        s = f"\nPrateleira {self.id}:\n"
-        if self.insumos:
-            for i in self.insumos.values():
-                s += f"- {i}\n"
-        else:
-            s += "Estoque vazio.\n"
-        return s
-
-# lógica do sistema (backend)
+# -----------------------------
+# Lógica do sistema (backend)
+# -----------------------------
 
 class SistemaEstoque:
     def __init__(self):
@@ -106,13 +81,12 @@ class SistemaEstoque:
         self._cadastrar_inicial("Papel", 100, "Prateleira_4")
         self._cadastrar_inicial("Máscaras", 400, "Prateleira_5")
 
-    # cadastro + manter lista ordenada por nome (Merge Sort)
+    # ---- cadastro + manter lista ordenada por nome (Merge Sort)
     def _cadastrar_inicial(self, nome, qtd, prateleira_id):
         self.estoque[prateleira_id].adicionar_insumo(nome, qtd)
         self.lista_insumos.append(nome)
         self.lista_insumos = self.merge_sort(self.lista_insumos)
 
-    # MERGE SORT (por nome)
     def merge_sort(self, lista):
         if len(lista) <= 1:
             return lista
@@ -131,7 +105,7 @@ class SistemaEstoque:
         r.extend(esq[i:]); r.extend(dir[j:])
         return r
 
-    # QUICK SORT (por quantidade)
+    # ---- Quick Sort (por quantidade)
     def quick_sort(self, arr, key=lambda x: x, reverse=False):
         if len(arr) <= 1:
             return arr[:]
@@ -146,7 +120,7 @@ class SistemaEstoque:
         lst = list(prateleira.insumos.values())
         return self.quick_sort(lst, key=lambda i: i.quantidade, reverse=decrescente)
 
-    # buscas
+    # ---- Buscas
     def busca_binaria(self, lista, alvo):
         i, f = 0, len(lista) - 1
         alvo_l = alvo.lower()
@@ -168,25 +142,23 @@ class SistemaEstoque:
                 return True
         return False
 
-    # exibições
+    # ---- Exibições
     def exibir_lista_insumos(self):
         if not self.lista_insumos:
             messagebox.showinfo("Insumos Cadastrados", "Nenhum insumo cadastrado.")
             return
-        t = "📋 Insumos (ordenados por nome / Merge Sort):\n\n"
-        for n in self.lista_insumos:
-            t += f"• {n}\n"
+        t = "📋 Insumos (ordenados por nome / Merge Sort):\n\n" + "\n".join(f"• {n}" for n in self.lista_insumos)
         messagebox.showinfo("Insumos Cadastrados", t)
 
     def exibir_estoque_total(self):
-        s = ""
+        s = []
         for p in self.estoque.values():
-            s += f"\nPrateleira {p.id} (por quantidade / Quick Sort):\n"
+            s.append(f"\nPrateleira {p.id} (por quantidade / Quick Sort):")
             for ins in self._insumos_ordenados_por_quantidade(p, decrescente=True):
-                s += f"- {ins.nome}: {ins.quantidade}\n"
-        messagebox.showinfo("Estoque Total", s)
+                s.append(f"- {ins.nome}: {ins.quantidade}")
+        messagebox.showinfo("Estoque Total", "\n".join(s))
 
-    # operações
+    # ---- Operações
     def adicionar_mais_estoque(self, nome, quantidade):
         for p in self.estoque.values():
             if nome in p.insumos:
@@ -225,22 +197,24 @@ class SistemaEstoque:
         if not self.historico_saidas and not self.fila_consumo:
             messagebox.showinfo("Histórico", "Nenhuma saída registrada.")
             return
-        s = ""
+        s = []
         for d, itens in self.historico_saidas.items():
-            s += f"{d}:\n"
+            s.append(f"{d}:")
             for n, q in itens.items():
-                s += f"  {n}: {q} unidades\n"
+                s.append(f"  {n}: {q} unidades")
         if self.fila_consumo:
-            s += "\n--- Fila (FIFO) — cronológica ---\n"
+            s.append("\n--- Fila (FIFO) — cronológica ---")
             for (d, h, n, q) in self.fila_consumo:
-                s += f"{d} {h}  {n}: -{q}\n"
+                s.append(f"{d} {h}  {n}: -{q}")
         if self.pilha_consumo:
-            s += "\n--- Pilha (LIFO) — inversa ---\n"
+            s.append("\n--- Pilha (LIFO) — inversa ---")
             for (d, h, n, q) in reversed(self.pilha_consumo):
-                s += f"{d} {h}  {n}: -{q}\n"
-        messagebox.showinfo("Histórico de Saídas", s)
+                s.append(f"{d} {h}  {n}: -{q}")
+        messagebox.showinfo("Histórico de Saídas", "\n".join(s))
 
-    # --- Programação Dinâmica: Reposição ---
+    # -----------------------------
+    # Programação Dinâmica: Reposição
+    # -----------------------------
     def _hold_cost(self, d, t, r, h):
         # custo de segurar as quantidades por j dias
         return sum(h * j * d[t + j] for j in range(r))
@@ -293,12 +267,12 @@ class SistemaEstoque:
         return dp[0], plano
 
     def prever_demanda(self, nome, dias=7):
-        # média simples do histórico por dia; fallback para demanda pequena
+        # média simples do histórico por dia; fallback: 5% do estoque atual
         totais = []
-        for data, itens in self.historico_saidas.items():
+        for _, itens in self.historico_saidas.items():
             if nome in itens:
                 totais.append(itens[nome])
-        media = max(1, round(sum(totais) / len(totais))) if totais else  max(1, round(self._quantidade_atual(nome) * 0.05))
+        media = max(1, round(sum(totais) / len(totais))) if totais else max(1, round(self._quantidade_atual(nome) * 0.05))
         return [media for _ in range(dias)]
 
     def _quantidade_atual(self, nome):
@@ -307,35 +281,46 @@ class SistemaEstoque:
                 return p.insumos[nome].quantidade
         return 0
 
-    def plano_dp_para_insumo(self, nome, dias=7, K=50, h=1, L=5):
+    def plano_dp_comparado(self, nome, dias=7, K=50, h=1, L=5, mostrar_planos=True):
+        """Calcula **ambos** os métodos e imprime os dois resultados, já com comparação.
+        Retorna um bloco de texto pronto para o modal.
+        """
         d = self.prever_demanda(nome, dias)
-        c1, p1 = self.dp_reposicao_bottom_up(d, K, h, L)
-        c2, p2 = self.dp_reposicao_rec_memo(tuple(d), K, h, L)  # tuple para cache
-        ok = (c1 == c2 and p1 == p2)
-        linhas = [f"DP para '{nome}' (dias={dias}, K={K}, h={h}, L={L}) — custo mínimo = {c1}"]
-        for ped in p1:
-            linhas.append(f"  • pedir no dia {ped['dia']} cobrindo {ped['cobre_dias']} dias → qty={ped['quantidade']}")
-        if not ok:
-            linhas.append("  ! Aviso: versões recursiva e iterativa divergiram (usando bottom-up).")
+        c_it, p_it = self.dp_reposicao_bottom_up(d, K, h, L)
+        c_rc, p_rc = self.dp_reposicao_rec_memo(tuple(d), K, h, L)
+
+        iguais = (c_it == c_rc and p_it == p_rc)
+
+        linhas = [f"DP para '{nome}' (dias={dias}, K={K}, h={h}, L={L})"]
+        linhas.append(f"• Iterativa (bottom-up): custo mínimo = {c_it}")
+        if mostrar_planos:
+            for ped in p_it:
+                linhas.append(f"   - pedir no dia {ped['dia']} cobrindo {ped['cobre_dias']} dias → qty={ped['quantidade']}")
+        linhas.append(f"• Recursiva (memoização): custo mínimo = {c_rc}")
+        if mostrar_planos:
+            for ped in p_rc:
+                linhas.append(f"   - pedir no dia {ped['dia']} cobrindo {ped['cobre_dias']} dias → qty={ped['quantidade']}")
+        linhas.append(f"⇒ Métodos consistentes: {'SIM' if iguais else 'NÃO'}")
         return "\n".join(linhas)
 
     def checagemPeriodica(self):
-        s = ""
+        s = []
         criticos = []
         for p in self.estoque.values():
             for i in p.insumos.values():
                 if i.quantidade <= 50:
-                    s += f"⚠️ {i.nome} na {p.id} com {i.quantidade} unidades (repor).\n"
+                    s.append(f"⚠️ {i.nome} na {p.id} com {i.quantidade} unidades (repor).")
                     criticos.append(i.nome)
                 else:
-                    s += f"✔️ {i.nome} na {p.id} com {i.quantidade} unidades.\n"
-        # anexa plano de reposição por DP para itens críticos
+                    s.append(f"✔️ {i.nome} na {p.id} com {i.quantidade} unidades.")
+        # anexa planos de reposição por **ambos os métodos** para itens críticos
         if criticos:
-            s += "\n— Sugestões de Reposição (Programação Dinâmica) —\n"
+            s.append("\n— Sugestões de Reposição (Programação Dinâmica) —")
             for nome in criticos:
-                s += self.plano_dp_para_insumo(nome, dias=7, K=50, h=1, L=5) + "\n"
-        messagebox.showinfo("Checagem de Estoque", s)
+                s.append(self.plano_dp_comparado(nome, dias=7, K=50, h=1, L=5, mostrar_planos=True))
+        messagebox.showinfo("Checagem de Estoque", "\n".join(s))
 
+    # ---- utilidades
     def buscar_insumo(self, nome):
         ok = self.busca_binaria(self.lista_insumos, nome) or self.busca_sequencial(self.lista_insumos, nome)
         if ok:
@@ -363,14 +348,16 @@ class SistemaEstoque:
         self.lista_insumos = self.merge_sort(self.lista_insumos)
         messagebox.showinfo("Novo Insumo", f"'{nome}' adicionado à {p.id} com {quantidade} unidades.")
 
-# UI (inalterada)
+# -----------------------------
+# UI
+# -----------------------------
 
 class Main:
     def __init__(self, sistema):
         self.sistema = sistema
         self.root = tk.Tk()
         self.root.title("Sistema de Estoque - SupplyFlow")
-        self.root.geometry("500x520")
+        self.root.geometry("520x560")
         self.criar_interface()
         self.root.mainloop()
 
@@ -411,6 +398,7 @@ class Main:
         nome = simpledialog.askstring("Retirar Estoque", "Nome do insumo:")
         if nome:
             qtd = simpledialog.askinteger("Quantidade", f"Quantidade a retirar de '{nome}':")
+        
             if qtd:
                 self.sistema.retirar_insumo(nome, qtd)
 
@@ -423,4 +411,3 @@ if __name__ == "__main__":
     logo_SupplyFlow()
     sistema = SistemaEstoque()
     Main(sistema)
-
