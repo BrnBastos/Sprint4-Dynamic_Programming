@@ -1,14 +1,12 @@
 # Sprint4-Dynamic_Programming
-# README — Sprint 4 (Programação Dinâmica aplicada ao SupplyFlow)
-
-**Baseado na última entrega**, adicionei os novos requisitos pedidos no enunciado e integrei tudo ao programa já existente. Abaixo explico **o que entrou**, **como foi implementado** e **onde está no código**.
+#(Programação Dinâmica aplicada ao SupplyFlow)
 
 ---
 
 ## O que foi adicionado
 
 1. **Formulação do problema (PD) — Reposição Ótima**
-   Modelamos a decisão de reposição como um problema de Programação Dinâmica no estilo “lote econômico com horizonte finito” (variante de Wagner-Whitin) para **minimizar o custo total** de pedidos + estocagem, dado um horizonte de `n` dias e uma previsão simples de demanda por dia.
+   Modelamos a decisão de reposição como um problema de Programação Dinâmica no estilo “lote econômico com horizonte finito” para **minimizar o custo total** de pedidos + estocagem, dado um intervalo de `n` dias e uma previsão simples de demanda por dia.
 
 * **Estados (`t`)**: o “próximo dia a atender” no horizonte, com `t ∈ {0,…,n}`.
 * **Decisões (`r`)**: quantos dias *consecutivos* a partir de `t` serão cobertos por **um único pedido** feito no dia `t` (limite superior `L`).
