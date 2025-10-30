@@ -1,8 +1,6 @@
 # Sprint4-Dynamic_Programming
 #(Programação Dinâmica aplicada ao SupplyFlow)
 
----
-
 ## O que foi adicionado
 
 1. **Formulação do problema — Reposição Ótima**
