@@ -1,87 +1,83 @@
 # Sprint4-Dynamic_Programming
-# Como cada estrutura/algoritmo foi usado no contexto do problema
+# README — Sprint 4 (Programação Dinâmica aplicada ao SupplyFlow)
 
-## Contexto rápido
-
-Nas unidades de diagnóstico, precisamos registrar e consultar **consumo diário de insumos** (reagentes/descartáveis) e **organizar o estoque**. A solução usa estruturas clássicas para dar conta de três cenários: registrar eventos em ordem, consultar rapidamente se um item existe e ordenar listas para visualização/gestão.
+**Baseado na última entrega**, adicionei os novos requisitos pedidos no enunciado e integrei tudo ao programa já existente. Abaixo explico **o que entrou**, **como foi implementado** e **onde está no código**.
 
 ---
 
-## Fila (FIFO)
+## O que foi adicionado
 
-**Onde:** `SistemaEstoque.fila_consumo` (tipo `deque`).
-**Quando é usada:** toda vez que há retirada de um insumo (`retirar_insumo` → `_registrar_consumo_evento`).
-**Para quê:** manter o **histórico cronológico** dos consumos. Assim, conseguimos ver “o que saiu” **na ordem em que aconteceu**, que é o que o requisito pede para uma fila (primeiro que entra, primeiro que sai).
-**Como aparece para o usuário:** em **“Consultar histórico”**, a seção *Fila (FIFO)* lista os eventos na **ordem do dia/hora**.
+1. **Formulação do problema (PD) — Reposição Ótima**
+   Modelamos a decisão de reposição como um problema de Programação Dinâmica no estilo “lote econômico com horizonte finito” (variante de Wagner-Whitin) para **minimizar o custo total** de pedidos + estocagem, dado um horizonte de `n` dias e uma previsão simples de demanda por dia.
 
----
+* **Estados (`t`)**: o “próximo dia a atender” no horizonte, com `t ∈ {0,…,n}`.
+* **Decisões (`r`)**: quantos dias *consecutivos* a partir de `t` serão cobertos por **um único pedido** feito no dia `t` (limite superior `L`).
+* **Função de transição**: escolher `r` implica avançar de `t` para `t + r`.
+* **Função objetivo**:
+  [
+  f(t) \;=\; \min_{1 \le r \le \min(L, n-t)} \Big[\, K \;+\; \text{hold_cost}(d, t, r, h) \;+\; f(t+r) \Big]
+  ]
+  com condição de contorno ( f(n) = 0 ).
+  *Onde*:
 
-## Pilha (LIFO)
+  * `K` = custo fixo por pedido;
+  * `h` = custo de manutenção (carregamento) por unidade-dia;
+  * `d[i]` = demanda prevista no dia `i`;
+  * `hold_cost(d, t, r, h) = \sum_{j=0}^{r-1} h \\cdot j \\cdot d[t+j]` (o que é pedido para o dia `t+j` fica estocado `j` dias).
 
-**Onde:** `SistemaEstoque.pilha_consumo` (lista).
-**Quando é usada:** nos mesmos eventos de retirada, em `_registrar_consumo_evento`.
-**Para quê:** permitir consultas que priorizam **os últimos consumos** – útil para conferir **o que acabou de sair** (ex.: auditoria rápida ou erro de lançamento).
-**Como aparece para o usuário:** em **“Consultar histórico”**, a seção *Pilha (LIFO)* mostra os eventos do **mais recente para o mais antigo**.
+2. **Duas versões da solução (exigência do enunciado)**
 
----
+* **Recursiva com memoização**: `dp_reposicao_rec_memo(d, K, h, L)`
+  Implementada com cache (decorator `lru_cache`) para guardar `f(t)` e evitar recomputações exponenciais.
+* **Iterativa bottom-up**: `dp_reposicao_bottom_up(d, K, h, L)`
+  Preenche um vetor `dp[t]` de trás para frente e um vetor `choice[t]` para reconstruir o plano ótimo.
 
-## Busca Sequencial
+3. **Garantia de resultados idênticos**
+   A função `plano_dp_para_insumo(...)` executa **as duas versões**, compara **custo mínimo** e **plano** (`ok = (c1 == c2 and p1 == p2)`) e **alerta** se houver divergência (não esperado). Assim atendemos ao critério “ambas produzem os mesmos resultados”.
 
-**Onde:** `SistemaEstoque.busca_sequencial`.
-**Quando é usada:** em `buscar_insumo`, junto com a binária (redundância intencional para cumprir o requisito e comparar abordagens).
-**Para quê:** é a forma mais simples de **procurar nome a nome**. Em listas curtas ou para fins didáticos, ela é suficiente.
-**Observação:** custo linear (cresce conforme a lista), por isso é bom ter também a busca binária.
+4. **Integração no fluxo da aplicação**
+   Quando a **Checagem Periódica** detecta itens críticos (≤ 50 unidades), o sistema:
 
----
+* gera uma **previsão simples de demanda** via média do histórico (`prever_demanda`), com *fallback* para 5% do estoque atual;
+* calcula o **plano ótimo de reposição** com PD;
+* exibe o plano já formatado no modal da checagem.
 
-## Busca Binária
-
-**Onde:** `SistemaEstoque.busca_binaria`.
-**Pré‑requisito:** a lista de nomes **precisa estar ordenada**.
-**Como garantimos isso:** sempre que um novo insumo é cadastrado, a lista global de nomes é reordenada via **Merge Sort** (`merge_sort`).
-**Quando é usada:** em `buscar_insumo` para **localizar rapidamente** se o item existe.
-**Benefício:** muito mais rápida em listas médias/grandes do que a sequencial.
-
----
-
-## Ordenação por Merge Sort (nomes)
-
-**Onde:** `SistemaEstoque.merge_sort` e `_merge`.
-**Quando é usada:** após cadastrar/atualizar a lista de nomes de insumos.
-**Para quê:** manter `lista_insumos` **ordenada alfabeticamente**, o que viabiliza a **busca binária** e uma listagem limpa para o usuário.
-**Motivo da escolha:** algoritmo **estável** e com desempenho garantido **O(n log n)**, adequado para manter a lista sempre em boa ordem.
+> **Onde encontrar no código**:
+> `SistemaEstoque._hold_cost`, `SistemaEstoque.dp_reposicao_rec_memo`, `SistemaEstoque.dp_reposicao_bottom_up`, `SistemaEstoque.prever_demanda`, `SistemaEstoque.plano_dp_para_insumo` e a chamada dentro de `SistemaEstoque.checagemPeriodica`.
 
 ---
 
-## Ordenação por Quick Sort (quantidades)
+## Complexidade e observações
 
-**Onde:** `SistemaEstoque.quick_sort` e `_insumos_ordenados_por_quantidade`.
-**Quando é usada:** em **“Exibir estoque total”**, para mostrar cada prateleira **do maior para o menor estoque**.
-**Para quê:** facilitar decisões de reposição e priorização (o que está acabando aparece por último, ou invertendo, pode-se ver o que está mais crítico primeiro).
-**Motivo da escolha:** algoritmo clássico, simples de implementar, e **eficiente na prática** para coleções típicas do problema (**O(n log n)** na média).
-**Observação:** aqui ordenamos por **quantidade** (o requisito aceita “quantidade consumida ou validade”). O campo de validade não existe no modelo, mas pode ser adicionado e ordenado da mesma forma.
-
----
-
-## Integração com o fluxo do problema
-
-1. **Registro do consumo** (retirada): gera **um evento** que vai para **fila** e **pilha** e atualiza o **histórico agregado por data**.
-2. **Consulta de existência** (buscar): usa **busca binária** (com apoio do **Merge Sort**) e, por completude, também a **sequencial**.
-3. **Visão do estoque**: usa **Quick Sort** para ordenar **por quantidade**, tornando a leitura e a tomada de decisão mais objetivas.
+* **Complexidade temporal**: (O(n \cdot L)) nas duas abordagens (cada estado `t` testa até `L` alcances).
+* **Espaço**: (O(n)) para `dp`/`choice` (bottom-up) e cache de `f(t)` (memoização).
+* **Parâmetros**: `K`, `h`, `L` e `dias` são ajustáveis em `plano_dp_para_insumo`.
+* **Pré-requisito**: uma previsão `d` coerente com a realidade (o modelo é tão bom quanto a demanda prevista).
 
 ---
 
-## Por que essa combinação atende o caso real
+## Outras técnicas estruturais já presentes (relembrando)
 
-* **Fila + Pilha** cobrem duas visões complementares do histórico (cronológica e reversa).
-* **Buscas** permitem responder rápido “existe ou não existe este insumo?”.
-* **Ordenação** organiza as listas de um jeito útil: **por nome** (para achar/ver) e **por quantidade** (para gerir/decidir).
+* **Filas e Pilhas**: saídas registradas em **FIFO** (`fila_consumo`) e **LIFO** (`pilha_consumo`) para visualizações cronológica e inversa.
+* **Buscas**: **sequencial** e **binária** sobre a lista de nomes (mantida ordenada).
+* **Ordenações**: **Merge Sort** para nomes e **Quick Sort** por quantidade ao exibir estoques.
 
 ---
 
-## Possíveis extensões
+## Como usar (rápido)
 
-* Adicionar **validade** no modelo do insumo e oferecer uma ordenação por **data de vencimento**.
-* Persistir os eventos em arquivo/BD para manter histórico entre execuções.
-* Expor botões separados para *Fila* e *Pilha* (hoje as duas visões aparecem dentro do histórico).
+1. Rode o script e abra a **Checagem Periódica**.
+2. Se houver itens críticos, o sistema mostra, para cada um, **quando pedir** e **quanto pedir** para cobrir `r` dias ao menor custo estimado.
+3. Você pode ajustar `K`, `h`, `L` e o **horizonte de dias** conforme a realidade da unidade.
+
+---
+
+## Participantes — Sala 2ESPx
+
+* **Carlos Henrique** — RM558003
+* **Mauricio Alves** — RM556214
+* **Ian Monteiro** — RM558652
+* **Bruno Silva** — RM550416
+* **João Hoffmann** — RM550763
+
 
