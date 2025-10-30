@@ -5,7 +5,7 @@
 
 ## O que foi adicionado
 
-1. **Formulação do problema (PD) — Reposição Ótima**
+1. **Formulação do problema — Reposição Ótima**
    Modelamos a decisão de reposição como um problema de Programação Dinâmica no estilo “lote econômico com horizonte finito” para **minimizar o custo total** de pedidos + estocagem, dado um intervalo de `n` dias e uma previsão simples de demanda por dia.
 
 * **Estados (`t`)**: o “próximo dia a atender” no horizonte, com `t ∈ {0,…,n}`.
@@ -23,7 +23,7 @@
   * `d[i]` = demanda prevista no dia `i`;
   * `hold_cost(d, t, r, h) = \sum_{j=0}^{r-1} h \\cdot j \\cdot d[t+j]` (o que é pedido para o dia `t+j` fica estocado `j` dias).
 
-2. **Duas versões da solução (exigência do enunciado)**
+2. **Duas versões da solução**
 
 * **Recursiva com memoização**: `dp_reposicao_rec_memo(d, K, h, L)`
   Implementada com cache (decorator `lru_cache`) para guardar `f(t)` e evitar recomputações exponenciais.
@@ -54,7 +54,7 @@
 
 ---
 
-## Outras técnicas estruturais já presentes (relembrando)
+## Outras técnicas estruturais já presentes da ultima entrega:
 
 * **Filas e Pilhas**: saídas registradas em **FIFO** (`fila_consumo`) e **LIFO** (`pilha_consumo`) para visualizações cronológica e inversa.
 * **Buscas**: **sequencial** e **binária** sobre a lista de nomes (mantida ordenada).
@@ -66,7 +66,7 @@
 
 1. Rode o script e abra a **Checagem Periódica**.
 2. Se houver itens críticos, o sistema mostra, para cada um, **quando pedir** e **quanto pedir** para cobrir `r` dias ao menor custo estimado.
-3. Você pode ajustar `K`, `h`, `L` e o **horizonte de dias** conforme a realidade da unidade.
+3. Pode-se ajustar `K`, `h`, `L` e o **horizonte de dias** conforme a realidade da unidade.
 
 ---
 
